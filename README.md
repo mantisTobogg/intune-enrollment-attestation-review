@@ -16,43 +16,6 @@ The default and recommended first-run mode is **detection and classification onl
 
 ---
 
-## Legal Disclaimer
-
-**THIS SCRIPT IS NOT AN OFFICIAL MICROSOFT PRODUCT AND IS NOT ENDORSED, SUPPORTED, OR WARRANTED BY MICROSOFT CORPORATION IN ANY WAY.**
-
-This script is an independent, community-developed tool provided strictly for informational and diagnostic purposes. It is not affiliated with, derived from, or approved by any Microsoft product team, support organisation, or official channel.
-
-**Use of this script is entirely at your own risk.** The author(s) make no representations or warranties of any kind, express or implied, regarding the accuracy, completeness, reliability, suitability, or availability of this script for any purpose. This includes but is not limited to:
-
-- Any modification to registry keys, scheduled tasks, or enrollment state that may result from use of the remediation switches
-- Any unintended side effects on device management, compliance state, or Entra ID / Intune registration
-- Any data loss, service interruption, or configuration change resulting from use of this script
-
-**Before enabling any remediation mode:**
-
-- Review all detection output and classifications manually
-- Validate against known healthy and known broken devices in your environment
-- Test in a controlled pilot group before any broader deployment
-- Ensure appropriate change management and rollback procedures are in place
-
-This script does not constitute advice, guidance, or a recommended practice from Microsoft. Any decision to run it in a production environment is made solely at the discretion and responsibility of the operator.
-
----
-
-## License
-
-MIT License
-
-Copyright (c) 2025
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
----
-
 ## Usage
 
 ```powershell
@@ -308,3 +271,44 @@ For `StaleEnrollmentSuspected`, the script also removes local machine certificat
 3. Run with `-Remediate` on a small subset of `StaleEnrollmentSuspected` devices.
 4. Confirm Intune registration, MDM value, last check-in, and compliance state after remediation.
 5. Expand only after classification accuracy is validated in your environment.
+
+---
+
+---
+
+## Legal Disclaimer
+
+**THIS SCRIPT IS NOT AN OFFICIAL MICROSOFT PRODUCT AND IS NOT ENDORSED, SUPPORTED, OR WARRANTED BY MICROSOFT CORPORATION IN ANY WAY.**
+
+This script is an independent, community-developed tool provided strictly for informational and diagnostic purposes. It is not affiliated with, derived from, or approved by any Microsoft product team, support organisation, or official channel.
+
+**Use of this script is entirely at your own risk.** The author(s) make no representations or warranties of any kind, express or implied, regarding the accuracy, completeness, reliability, suitability, or availability of this script for any purpose. This includes but is not limited to:
+
+- Any modification to registry keys, scheduled tasks, or enrollment state that may result from use of the remediation switches
+- Any unintended side effects on device management, compliance state, or Entra ID / Intune registration
+- Any data loss, service interruption, or configuration change resulting from use of this script
+
+**Before enabling any remediation mode:**
+
+- Review all detection output and classifications manually
+- Validate against known healthy and known broken devices in your environment
+- Test in a controlled pilot group before any broader deployment
+- Ensure appropriate change management and rollback procedures are in place
+
+This script does not constitute advice, guidance, or a recommended practice from Microsoft. Any decision to run it in a production environment is made solely at the discretion and responsibility of the operator.
+
+---
+
+## License
+
+MIT License
+
+Copyright (c) 2025
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
