@@ -4,6 +4,32 @@ A PowerShell script for **detecting, classifying, and optionally remediating** s
 
 ---
 
+## Purpose
+
+This repository provides a practical review and recovery aid for Windows devices whose Intune MDM enrollment state may be stale, incomplete, or inconsistent after Entra join or enrollment attempts.
+
+The script is designed to be used first as a **read-only attestation tool**. It collects device registration state, enrollment registry evidence, scheduled task state, and recent MDM-related event log signals, then classifies the device into a small set of actionable outcomes. Optional remediation exists for carefully validated stale-enrollment cases, but detection-only review should always come first.
+
+The goal is not to replace normal Intune or Entra troubleshooting. The goal is to make local enrollment evidence easier to inspect, classify, and pilot safely before any cleanup is attempted.
+
+---
+
+## Table of Contents
+
+- [Purpose](#purpose)
+- [Default Behavior - Detection Only](#default-behavior---detection-only)
+- [Usage](#usage)
+- [Output](#output)
+- [Detection-Only Test Expectations](#detection-only-test-expectations)
+- [Device Classifications](#device-classifications)
+- [Functions](#functions)
+- [Remediation Logic](#remediation-logic)
+- [Recommended Rollout](#recommended-rollout)
+- [Legal Disclaimer](#legal-disclaimer)
+- [License](#license)
+
+---
+
 ## Default Behavior - Detection Only
 
 **This script makes no changes to any system by default.**
@@ -268,16 +294,28 @@ For `StaleEnrollmentSuspected`, the script also removes local machine certificat
 
 1. Run in detection-only mode across a pilot group.
 2. Review `detection-result.json` output — validate classifications against known good and known broken devices.
+<<<<<<< HEAD
     - The Detections results are automatically stored in path: `"Get-Content "C:\ProgramData\IntuneEnrollmentRepair\{YYYYMMDD_HHMMSS}\"`
    
+=======
+3. Detection results are stored under `C:\ProgramData\IntuneEnrollmentRepair\{YYYYMMDD_HHMMSS}\`. For example:
+
+   ```powershell
+   Get-Content "C:\ProgramData\IntuneEnrollmentRepair\20260619_091921\detection-result.json" -Raw
+   ```
+
+>>>>>>> fc2e752 (Modified ignore to include outdated files and scraps.#)
 4. Run with `-Remediate` on a small subset of `StaleEnrollmentSuspected` devices.
 5. Confirm Intune registration, MDM value, last check-in, and compliance state after remediation.
 6. Expand only after classification accuracy is validated in your environment.
 
 ---
 
+<<<<<<< HEAD
 ---
 
+=======
+>>>>>>> fc2e752 (Modified ignore to include outdated files and scraps.#)
 ## Legal Disclaimer
 
 **THIS SCRIPT IS NOT AN OFFICIAL MICROSOFT PRODUCT AND IS NOT ENDORSED, SUPPORTED, OR WARRANTED BY MICROSOFT CORPORATION IN ANY WAY.**
@@ -312,5 +350,8 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+<<<<<<< HEAD
 
 ---
+=======
+>>>>>>> fc2e752 (Modified ignore to include outdated files and scraps.#)
