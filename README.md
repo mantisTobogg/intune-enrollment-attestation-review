@@ -81,6 +81,21 @@ Every run writes to a timestamped folder under `BackupRoot` (e.g. `C:\ProgramDat
 | `ERM-Tracked.reg`             | Registry backup of `HKLM\SOFTWARE\Microsoft\EnterpriseResourceManager\Tracked` (written before cleanup). |
 | `remediation-write-error.txt` | Written only if the result JSON fails to save after remediation.                              |
 
+The detection report also includes GUID correlation fields. These fields are diagnostic evidence only; they improve review visibility but do not change classification or remediation behavior.
+
+| Field family | Meaning |
+| ------------ | ------- |
+| `OmadmGuidsInEnrollment*` | OMADM account GUIDs that also appear under `Enrollments`. |
+| `EnrollmentGuidsNotInOmadm*` | Enrollment GUIDs with no matching OMADM account GUID. |
+| `OmadmGuidsNotInEnrollment*` | OMADM account GUIDs with no matching enrollment GUID. |
+| `StatusGuidsNotInEnrollment*` | `Enrollments\Status` GUIDs with no matching enrollment GUID. |
+| `OmadmSessionGuidsNotInEnrollment*` | OMADM session GUIDs with no matching enrollment GUID. |
+| `OmadmLoggerGuidsNotInEnrollment*` | OMADM logger GUIDs with no matching enrollment GUID. |
+| `PolicyProviderGuidsNotInEnrollment*` | PolicyManager provider GUIDs with no matching enrollment GUID. |
+| `TrackedGuidsNotInEnrollment*` | EnterpriseResourceManager tracked GUIDs with no matching enrollment GUID. |
+
+`*Count` fields provide the number of matching GUIDs, and the paired field contains a semicolon-delimited GUID list.
+
 ---
 
 ## Detection-Only Test Expectations
@@ -105,6 +120,10 @@ In detection-only mode, the script:
   - `HKLM:\SOFTWARE\Microsoft\Enrollments`
   - `HKLM:\SOFTWARE\Microsoft\Enrollments\Status`
   - `HKLM:\SOFTWARE\Microsoft\Provisioning\OMADM\Accounts`
+  - `HKLM:\SOFTWARE\Microsoft\Provisioning\OMADM\Sessions`
+  - `HKLM:\SOFTWARE\Microsoft\Provisioning\OMADM\Logger`
+  - `HKLM:\SOFTWARE\Microsoft\PolicyManager\Providers`
+  - `HKLM:\SOFTWARE\Microsoft\EnterpriseResourceManager\Tracked`
 - Enumerates EnterpriseMgmt scheduled tasks
 - Reads recent MDM / device registration event logs for the last `72` hours by default
 - Writes `detection-result.json`
@@ -123,6 +142,28 @@ EnterpriseMgmtTaskCount > 0
 Classification=HealthyManaged
 RemediationAttempted=False
 RemediationResult=Not run
+```
+
+For this healthy state, the expected operational outcome is:
+
+- Do not run cleanup.
+- Do not remove registry keys, scheduled tasks, or certificates.
+- Treat extra `EnrollmentGuidsNotInOmadm` values as review evidence only, not proof of stale enrollment.
+- Use the GUID correlation fields to understand the local enrollment shape, not to override the classification by themselves.
+
+If the classification is not `HealthyManaged`, read `RecommendedAction` before deciding on remediation:
+
+- `EnrollmentBlocked` means prerequisite issues such as licensing, enrollment restrictions, device limit, or network/access failures should be resolved first.
+- `EnrollmentRejectedByService` means local cleanup is not expected to help; review Entra device object state, Intune enrollment restrictions, user/device limits, license, and MDM scope.
+- `StaleEnrollmentSuspected` is the only classification intended for stale artifact cleanup review, and remediation should still be piloted carefully.
+- `EntraJoinedButMDMMissing` usually means there is no local stale artifact cleanup to perform; review auto-enrollment prerequisites and test DeviceEnroller only when appropriate.
+- `EnrollmentBroken` means MDM URL exists but recent errors were detected; try sync and review event evidence before considering any cleanup.
+- `NeedsManualReview` means the collected evidence does not match a safe known pattern.
+
+The console table is useful for a quick check, but PowerShell may truncate long GUID lists or display ellipses/encoding artifacts. Use `detection-result.json` for exact review and copy/paste of full GUID values:
+
+```powershell
+Get-Content "C:\ProgramData\IntuneEnrollmentRepair\<timestamp>\detection-result.json" -Raw
 ```
 
 Two classification details are worth watching during pilot testing:
@@ -341,6 +382,5 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-<<<<<<< HEAD
 
 ---

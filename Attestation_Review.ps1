@@ -63,6 +63,23 @@ function Get-GuidSubKeys {
         Select-Object -ExpandProperty PSChildName
 }
 # ============================================================================
+# GUID 문자열 비교용 정규화
+# ----------------------------------------------------------------------------
+# Registry provider / task path / export source에 따라 GUID casing 또는 brace
+# 포함 여부가 달라질 수 있으므로, 진단용 비교 전에 같은 형태로 정규화한다.
+# 이 함수는 classification/remediation 판단에는 사용하지 않고 report visibility 용도.
+# ============================================================================
+function Normalize-GuidList {
+    param([string[]]$Guids)
+
+    return @(
+        $Guids |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            ForEach-Object { $_.Trim("{}").ToUpperInvariant() } |
+            Sort-Object -Unique
+    )
+}
+# ============================================================================
 # EnterpriseMgmt 스케줄된 작업 목록 조회
 # ============================================================================
 # FIX 5: -TaskPath 파라미터는 와일드카드를 지원하지 않으므로 Where-Object 필터로 대체
@@ -205,8 +222,58 @@ $trackedPath       = "HKLM:\SOFTWARE\Microsoft\EnterpriseResourceManager\Tracked
 $enrollmentGuids = @(Get-GuidSubKeys $enrollPath)
 $statusGuids     = @(Get-GuidSubKeys $statusPath)
 $omadmGuids      = @(Get-GuidSubKeys $omadmPath)
+$omadmSessionGuids = @(Get-GuidSubKeys $omadmSessionsPath)
+$omadmLoggerGuids  = @(Get-GuidSubKeys $omadmLoggerPath)
+$policyProvGuids   = @(Get-GuidSubKeys $policyProvPath)
+$trackedGuids      = @(Get-GuidSubKeys $trackedPath)
 $tasks           = @(Get-EnterpriseMgmtTasks)
 $events          = @(Get-RecentMdmErrors -Hours $RecentHours)
+
+# ============================================================================
+# GUID correlation diagnostics
+# ----------------------------------------------------------------------------
+# 아래 값들은 report 해석을 돕기 위한 evidence field 이며,
+# stale/active 여부를 단정하거나 remediation eligibility를 바꾸지 않는다.
+# ============================================================================
+$normalizedEnrollmentGuids  = Normalize-GuidList $enrollmentGuids
+$normalizedStatusGuids      = Normalize-GuidList $statusGuids
+$normalizedOmadmGuids       = Normalize-GuidList $omadmGuids
+$normalizedOmadmSessionGuids = Normalize-GuidList $omadmSessionGuids
+$normalizedOmadmLoggerGuids  = Normalize-GuidList $omadmLoggerGuids
+$normalizedPolicyProvGuids   = Normalize-GuidList $policyProvGuids
+$normalizedTrackedGuids      = Normalize-GuidList $trackedGuids
+
+$omadmGuidsInEnrollment = @(
+    $normalizedOmadmGuids | Where-Object { $_ -in $normalizedEnrollmentGuids }
+)
+
+$enrollmentGuidsNotInOmadm = @(
+    $normalizedEnrollmentGuids | Where-Object { $_ -notin $normalizedOmadmGuids }
+)
+
+$omadmGuidsNotInEnrollment = @(
+    $normalizedOmadmGuids | Where-Object { $_ -notin $normalizedEnrollmentGuids }
+)
+
+$statusGuidsNotInEnrollment = @(
+    $normalizedStatusGuids | Where-Object { $_ -notin $normalizedEnrollmentGuids }
+)
+
+$omadmSessionGuidsNotInEnrollment = @(
+    $normalizedOmadmSessionGuids | Where-Object { $_ -notin $normalizedEnrollmentGuids }
+)
+
+$omadmLoggerGuidsNotInEnrollment = @(
+    $normalizedOmadmLoggerGuids | Where-Object { $_ -notin $normalizedEnrollmentGuids }
+)
+
+$policyProvGuidsNotInEnrollment = @(
+    $normalizedPolicyProvGuids | Where-Object { $_ -notin $normalizedEnrollmentGuids }
+)
+
+$trackedGuidsNotInEnrollment = @(
+    $normalizedTrackedGuids | Where-Object { $_ -notin $normalizedEnrollmentGuids }
+)
 
 # dsregcmd 출력값에서 핵심 필드 추출
 $azureAdJoined    = $dsreg["AzureAdJoined"]
@@ -318,8 +385,33 @@ $result = [ordered]@{
     EnrollmentGuidCount      = $enrollmentGuids.Count
     EnrollmentGuids          = ($enrollmentGuids -join ";")
     StatusGuidCount          = $statusGuids.Count
+    StatusGuids              = ($statusGuids -join ";")
     OmadmGuidCount           = $omadmGuids.Count
     OmadmGuids               = ($omadmGuids -join ";")
+    OmadmSessionGuidCount    = $omadmSessionGuids.Count
+    OmadmSessionGuids        = ($omadmSessionGuids -join ";")
+    OmadmLoggerGuidCount     = $omadmLoggerGuids.Count
+    OmadmLoggerGuids         = ($omadmLoggerGuids -join ";")
+    PolicyProviderGuidCount  = $policyProvGuids.Count
+    PolicyProviderGuids      = ($policyProvGuids -join ";")
+    TrackedGuidCount         = $trackedGuids.Count
+    TrackedGuids             = ($trackedGuids -join ";")
+    OmadmGuidsInEnrollmentCount        = $omadmGuidsInEnrollment.Count
+    OmadmGuidsInEnrollment             = ($omadmGuidsInEnrollment -join ";")
+    EnrollmentGuidsNotInOmadmCount     = $enrollmentGuidsNotInOmadm.Count
+    EnrollmentGuidsNotInOmadm          = ($enrollmentGuidsNotInOmadm -join ";")
+    OmadmGuidsNotInEnrollmentCount     = $omadmGuidsNotInEnrollment.Count
+    OmadmGuidsNotInEnrollment          = ($omadmGuidsNotInEnrollment -join ";")
+    StatusGuidsNotInEnrollmentCount    = $statusGuidsNotInEnrollment.Count
+    StatusGuidsNotInEnrollment         = ($statusGuidsNotInEnrollment -join ";")
+    OmadmSessionGuidsNotInEnrollmentCount = $omadmSessionGuidsNotInEnrollment.Count
+    OmadmSessionGuidsNotInEnrollment      = ($omadmSessionGuidsNotInEnrollment -join ";")
+    OmadmLoggerGuidsNotInEnrollmentCount  = $omadmLoggerGuidsNotInEnrollment.Count
+    OmadmLoggerGuidsNotInEnrollment       = ($omadmLoggerGuidsNotInEnrollment -join ";")
+    PolicyProviderGuidsNotInEnrollmentCount = $policyProvGuidsNotInEnrollment.Count
+    PolicyProviderGuidsNotInEnrollment      = ($policyProvGuidsNotInEnrollment -join ";")
+    TrackedGuidsNotInEnrollmentCount      = $trackedGuidsNotInEnrollment.Count
+    TrackedGuidsNotInEnrollment           = ($trackedGuidsNotInEnrollment -join ";")
     EnterpriseMgmtTaskCount  = $enterpriseTaskCount
     RecentErrorCount         = $recentErrorCount
     BlockingErrorCount       = $blockingErrorCount
