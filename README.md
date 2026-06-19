@@ -268,9 +268,11 @@ For `StaleEnrollmentSuspected`, the script also removes local machine certificat
 
 1. Run in detection-only mode across a pilot group.
 2. Review `detection-result.json` output — validate classifications against known good and known broken devices.
-3. Run with `-Remediate` on a small subset of `StaleEnrollmentSuspected` devices.
-4. Confirm Intune registration, MDM value, last check-in, and compliance state after remediation.
-5. Expand only after classification accuracy is validated in your environment.
+    - The Detections results are automatically stored in path: `"Get-Content "C:\ProgramData\IntuneEnrollmentRepair\{YYYYMMDD_HHMMSS}\"`
+   
+4. Run with `-Remediate` on a small subset of `StaleEnrollmentSuspected` devices.
+5. Confirm Intune registration, MDM value, last check-in, and compliance state after remediation.
+6. Expand only after classification accuracy is validated in your environment.
 
 ---
 
