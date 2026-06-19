@@ -329,7 +329,7 @@ $hasAadEnrollDenied = @(
 #   EnrollmentBlocked > EnrollmentRejectedByService > HealthyManaged >
 #   StaleEnrollmentSuspected > EntraJoinedButMDMMissing > EnrollmentBroken > NeedsManualReview
 # ============================================================================
-$classification     = "NeedsManualReview, 단말 로그 확인필요해 보임"
+$classification     = "NeedsManualReview"
 $recommendedAction  = "Collect diagnostics and review manually."
 
 if ($blockingErrorCount -gt 0) {
