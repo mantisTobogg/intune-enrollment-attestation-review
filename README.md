@@ -294,28 +294,19 @@ For `StaleEnrollmentSuspected`, the script also removes local machine certificat
 
 1. Run in detection-only mode across a pilot group.
 2. Review `detection-result.json` output — validate classifications against known good and known broken devices.
-<<<<<<< HEAD
-    - The Detections results are automatically stored in path: `"Get-Content "C:\ProgramData\IntuneEnrollmentRepair\{YYYYMMDD_HHMMSS}\"`
    
-=======
 3. Detection results are stored under `C:\ProgramData\IntuneEnrollmentRepair\{YYYYMMDD_HHMMSS}\`. For example:
 
    ```powershell
    Get-Content "C:\ProgramData\IntuneEnrollmentRepair\20260619_091921\detection-result.json" -Raw
    ```
-
->>>>>>> fc2e752 (Modified ignore to include outdated files and scraps.#)
 4. Run with `-Remediate` on a small subset of `StaleEnrollmentSuspected` devices.
 5. Confirm Intune registration, MDM value, last check-in, and compliance state after remediation.
 6. Expand only after classification accuracy is validated in your environment.
 
+
 ---
 
-<<<<<<< HEAD
----
-
-=======
->>>>>>> fc2e752 (Modified ignore to include outdated files and scraps.#)
 ## Legal Disclaimer
 
 **THIS SCRIPT IS NOT AN OFFICIAL MICROSOFT PRODUCT AND IS NOT ENDORSED, SUPPORTED, OR WARRANTED BY MICROSOFT CORPORATION IN ANY WAY.**
@@ -353,5 +344,3 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 <<<<<<< HEAD
 
 ---
-=======
->>>>>>> fc2e752 (Modified ignore to include outdated files and scraps.#)
