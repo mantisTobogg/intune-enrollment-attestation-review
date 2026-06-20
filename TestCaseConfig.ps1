@@ -5,13 +5,13 @@
 # Stale, Fake GUID creation
 # ==================================================================
 # Detection only — should classify as StaleEnrollmentSuspected
-# `.\IntuneEnrollmentRepair.ps1 -TestMode`
+# `.\Attestation_DevB.ps1 -TestMode`
 
 # Remediation — should backup then delete DEADBEEF from all hives
-# `.\IntuneEnrollmentRepair.ps1 -TestMode -Remediate`
+# `.\Attestation_DevB.ps1 -TestMode -Remediate`
 
 # Full — should also trigger DeviceEnroller (will fail on Home, but tests the path)
-# `.\IntuneEnrollmentRepair.ps1 -TestMode -Remediate -RunDeviceEnroller`
+# `.\Attestation_DevB.ps1 -TestMode -Remediate -RunDeviceEnroller`
 #
 # ==================================================================
 $testGuid = "DEADBEEF-1234-5678-9ABC-DEF012345678"
