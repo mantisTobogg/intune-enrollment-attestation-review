@@ -197,3 +197,21 @@ RemediationResult              Skipped: HealthyManaged.
 
 ```
 
+## VERDICT: Failure
+
+
+All three classified as HealthyManaged and skipped ¿ TestMode override is too healthy. 
+TestMode sets:
+  AzureAdJoined    = YES  ¿
+  DeviceAuthStatus = SUCCESS  ¿
+  MdmUrl           = https://enrollment.manage.microsoft.com/...  ¿ this is the problem
+  MdmUrlPresent    = True
+
+Real registry on this box has:
+  OmadmGuidCount          = 3
+  EnterpriseMgmtTaskCount = 32
+
+Classification logic:
+  AzureAdJoined=YES + MdmUrlPresent=True + OmadmGuids>0 + Tasks>0
+  ¿ HealthyManaged  ¿ every time, all three runs
+The HealthyManaged gate fires before anything else gets a chance. 
