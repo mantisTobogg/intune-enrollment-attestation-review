@@ -189,7 +189,7 @@ function Remove-RegSubKey {
     }
 }
 
-# Test-Admin 실패 시 즉시 종료
+# Test-Admin 실패 시  종료
 if (-not (Test-Admin)) {
     throw "Run this script as Administrator."
 }
@@ -214,9 +214,9 @@ $omadmPath  = "HKLM:\SOFTWARE\Microsoft\Provisioning\OMADM\Accounts"
 # ============================================================================
 # GUID-scoped 정리 대상 
 # ----------------------------------------------------------------------------
-# 기존 스크립트는 Enrollments / Enrollments\Status / OMADM\Accounts 3곳만 정리했다.
+# 기존 스크립트는 Enrollments / Enrollments\Status / OMADM\Accounts 3곳만 정리.
 # 부분 정리로 인해 OMADM\Sessions, OMADM\Logger 등 연관 상태가 잔존하면
-# 다음 등록 흐름이 비일관 상태를 다시 참조할 수 있다 (실제 케이스에서 관측됨).
+# 이후 등록 과정 중 이슈 발생 할 수 있으니 정리 진행 필요.
 #
 # 주의: 아래 경로는 모두 "부모 경로"이며, 실제 삭제는 GUID 하위 키에 한해서만 수행.
 # PolicyManager\Providers, EnterpriseResourceManager\Tracked 는 GUID 하위 키 구조이므로
@@ -241,8 +241,8 @@ $events            = @(Get-RecentMdmErrors -Hours $RecentHours)
 # ============================================================================
 # GUID correlation diagnostics
 # ----------------------------------------------------------------------------
-# 아래 값들은 report 해석을 돕기 위한 evidence field 이며,
-# stale/active 여부를 단정하거나 remediation eligibility를 바꾸지 않는다.
+# 출력되는 리포트 구성 요소. 
+# stale/active 여부를 단정하거나 remediation eligibility에 영향 없음.
 # ============================================================================
 $normalizedEnrollmentGuids   = Normalize-GuidList $enrollmentGuids
 $normalizedStatusGuids       = Normalize-GuidList $statusGuids
@@ -297,10 +297,10 @@ $tenantName       = $dsreg["TenantName"]
 $mdmUrlPresent = -not [string]::IsNullOrWhiteSpace($mdmUrl)
 
 # ============================================================================
-# TestMode: dsregcmd 출력값을 프로파일별 하드코딩으로 오버라이드
+# TestMode: dsregcmd 출력값을 하드코딩 오버라이드
 # ----------------------------------------------------------------------------
-# 실제 dsregcmd / 이벤트 로그 수집은 정상 수행된 뒤, 여기서 핵심 변수만 덮어쓴다.
-# PROD 동작에 영향 없음 — -TestMode 스위치 없으면 이 블록 전체 스킵.
+# 실제 dsregcmd / 이벤트 로그 수집을 진행 한 후, 그 위에 fabricated 값으로 덮어씀. 
+# PROD 동작에 영향 없음 — -TestMode 스위치 없으면 이 블록 전체 스킵됨. 
 # ============================================================================
 if ($TestMode) {
     Write-Host "[TestMode] Profile: $TestProfile — dsregcmd/event overrides active" -ForegroundColor Yellow
@@ -358,12 +358,12 @@ $blockingErrorCount = @(
 # - Event 76 "Auto MDM Enroll: ... Failed (Bad request (400))" = 0x80190190
 # - Event 83 "AADEnrollAsync Failure (Access is denied.)"
 # 이 두 신호가 함께 나타나면, Discovery는 성공하나 등록 요청을 서비스가 거부하는 상태로
-# 로컬 아티팩트 정리(StaleEnrollment 경로)로는 해결이 안된다는 점을 고려하여 별도의 Tenant 설정 이슈 일 가능성이 큼
+# 로컬 아티팩트 정리(StaleEnrollment 경로)로는 해결이 안된다는 점을 고려하여 별도의 Tenant 설정 이슈로 보임. 
 # 원인은 디바이스 객체 상태 / 등록 제한 / 사용자당 디바이스 한도 / 라이선스 등 서비스 측
 # ============================================================================
 # 주의: 위 $blockingErrorCount(0x801800xx 계열)와 별개 신호다.
 # 관측된 거부는 0x801800xx가 아니라 0x80190190(HTTP 400)으로 표면화되었으므로,
-# 기존 GateKepping 방법으로 해당 상태파악이 힘듬. 
+# 기존 GateKepping 방법으로 해당 상태 파악 안됨. 
 # ============================================================================
 $has400Reject = @(
     $events | Where-Object { $_.Id -eq 76 -and $_.Message -match "0x80190190|Bad request \(400\)" }
@@ -500,7 +500,7 @@ $result.GetEnumerator() | ForEach-Object {
 # ----------------------------------------------------------------------------
 if ($Remediate) {
 
-    # FIX 3 / FIX 7: HealthyManaged 및 EnrollmentBlocked는 정리 불필요 — 즉시 스킵
+    # FIX 3 / FIX 7: HealthyManaged 및 EnrollmentBlocked는 정리 불필요 — 스킵
     if ($classification -in @("HealthyManaged", "EnrollmentBlocked")) {
         $result.RemediationResult = "Skipped: $classification."
     }
@@ -618,14 +618,14 @@ if ($Remediate) {
         # FIX 4: DeviceEnroller 실행은 -RunDeviceEnroller 스위치 명시 시에만 실행
         # 이전 버전: ($RunDeviceEnroller -or $classification -in @(...)) 로직으로
         # -RunDeviceEnroller 없이도 특정 분류에서 자동 실행됨 (의도치 않은 동작)
-        # 수정: -RunDeviceEnroller 스위치가 있어야만 실행 (명시적 opt-in)
+        # 수정: -RunDeviceEnroller 스위치가 있어야만 실행되도록 기본값 (명시적 opt-in)
         # ============================================================================
         if ($RunDeviceEnroller) {
             # ----------------------------------------------------------------------------
             # FIX 3 (DeviceEnroller): -Wait 제거
             # DeviceEnroller.exe /c /AutoEnrollMDM 얌전히 완료 대기 할 것 (30~90초) 
             # Intune Remediations 스크립트 타임아웃(기본 60초)에 걸릴 위험
-            # 프로세스 시작만 트리거하고 스크립트는 즉시 진행
+            # 프로세스 시작만 트리거하고 스크립트 수행 
             # ----------------------------------------------------------------------------
             $deviceEnroller = Join-Path $env:SystemRoot "System32\DeviceEnroller.exe"
             Start-Process -FilePath $deviceEnroller -ArgumentList "/c /AutoEnrollMDM" -WindowStyle Hidden
@@ -647,7 +647,7 @@ if ($Remediate) {
         $result.RemediationResult = "Skipped: classification not eligible for automatic remediation."
     }
     # ============================================================================
-    # 정리 실행 후 최종 결과를 별도 JSON으로 저장
+    # 정리 실행 후 최종 결과를 별도 JSON으로 저장됨. (detection-result.json은 정리 전 상태 스냅샷 참고)
     # FIX 4 (오류 처리): try/catch로 감싸 정리 도중 실패해도 결과 JSON은 기록 하도록 구성 
     # ============================================================================
     try {
