@@ -11,7 +11,7 @@
 ### Signal detection (what the script looks for)
 
 - Blocking error codes in event messages — `0x80180026` (device cap), `0x80180014` (enrollment restriction), `0x80180018` (no MDM license), `0x80280013` (network/access)
-- Service-side rejection signals — Event 76 containing `0x80190190` / "Bad request (400)" AND Event 83 containing "AADEnrollAsync" / "Access is denied" — the combination that came directly from the olive case analysis
+- Service-side rejection signals — Event 76 containing `0x80190190` / "Bad request (400)" AND Event 83 containing "AADEnrollAsync" / "Access is denied" — the combination observed in a real enrollment failure case
 - Per-GUID stale determination — checks each enrollment GUID's `EnrollmentType` (=6 for MDM) and `DiscoveryServiceFullURL` (contains `manage.microsoft.com`). Only GUIDs matching either criterion are treated as Intune artifacts eligible for cleanup. Unknown GUIDs are left untouched.
 
 ### Classification (the decision tree)

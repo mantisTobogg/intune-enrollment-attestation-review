@@ -27,7 +27,7 @@ Final iteration. All fixes from DevA/DevB plus TestProfile system, extended hive
 
 | Feature | Description |
 |---------|-------------|
-| EnrollmentRejectedByService | New classification for HTTP 400 + AADEnrollAsync denial pattern. Derived from CJ OliveNetworks customer case where devices had enrollment GUIDs but local cleanup couldn't resolve service-side rejection. Requires Event 76 (`0x80190190`) AND Event 83 (`AADEnrollAsync` denied). |
+| EnrollmentRejectedByService | New classification for HTTP 400 + AADEnrollAsync denial pattern. Derived from a real enrollment failure case where devices had enrollment GUIDs but local cleanup couldn't resolve service-side rejection. Requires Event 76 (`0x80190190`) AND Event 83 (`AADEnrollAsync` denied). |
 | Extended hive coverage | Cleanup now covers 7 registry hives (added `OMADM\Sessions`, `OMADM\Logger`, `PolicyManager\Providers`, `EnterpriseResourceManager\Tracked`) in addition to the original 3 (`Enrollments`, `Enrollments\Status`, `OMADM\Accounts`). All GUID-scoped. |
 | COM task-folder deletion | After `Unregister-ScheduledTask`, the empty `\Microsoft\Windows\EnterpriseMgmt\{GUID}` folder is removed via `Schedule.Service` COM `DeleteFolder`. Best-effort — failure is silently ignored. |
 | Scoped cert removal | Intune MDM client certificates (`Cert:\LocalMachine\My`, issuer matching `Intune MDM` or `Microsoft Device Management Device CA`) are removed only in the `StaleEnrollmentSuspected` path, after backup. |

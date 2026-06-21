@@ -48,7 +48,7 @@ The script classifies each device into exactly one category based on dsregcmd ou
 
 **Trigger:** Event 76 contains `0x80190190` or `Bad request (400)` AND Event 83 contains `Access is denied` or `AADEnrollAsync`.
 
-**Rationale:** Discovery succeeds (device can reach the enrollment endpoint) but the enrollment request itself is rejected by the service with HTTP 400. This pattern was first observed in the CJ OliveNetworks case — devices had enrollment GUIDs present, which would normally match `StaleEnrollmentSuspected`, but local cleanup repeatedly failed to resolve the issue because the rejection was server-side.
+**Rationale:** Discovery succeeds (device can reach the enrollment endpoint) but the enrollment request itself is rejected by the service with HTTP 400. This pattern was observed in a real enrollment failure case — devices had enrollment GUIDs present, which would normally match `StaleEnrollmentSuspected`, but local cleanup repeatedly failed to resolve the issue because the rejection was server-side.
 
 **Remediation:** Skipped unconditionally. Recommended actions: verify Entra device object state (existence, stale duplicates), Intune enrollment restrictions, per-user device cap, user's Intune license, and MDM scope assignment.
 

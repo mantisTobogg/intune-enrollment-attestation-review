@@ -26,7 +26,7 @@ foreach ($p in $paths) {
     }
 }
 
-# --- Step 2: Re-import customer registry data that got deleted by prior test runs ---
+# --- Step 2: Re-import registry data that got deleted by prior test runs ---
 # If 697258CB or other real GUIDs were removed, restore them from the backup
 $latestBackup = Get-ChildItem "C:\ProgramData\IntuneEnrollmentRepair" -Directory |
     Sort-Object Name -Descending |
