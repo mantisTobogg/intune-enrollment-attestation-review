@@ -25,6 +25,7 @@ The goal is not to replace normal Intune or Entra troubleshooting. The goal is t
 - [Functions](#functions)
 - [Remediation Logic](#remediation-logic)
 - [Recommended Rollout](#recommended-rollout)
+- [TestMode](#testmode)
 - [Legal Disclaimer](#legal-disclaimer)
 - [License](#license)
 
@@ -53,16 +54,25 @@ The default and recommended first-run mode is **detection and classification onl
 
 # Detection + remediation + trigger MDM re-enrollment
 .\Attestation_Review.ps1 -Remediate -RunDeviceEnroller
+
+# TestMode — simulate classification paths on a test device
+.\Attestation_Review.ps1 -TestMode -TestProfile Stale
+.\Attestation_Review.ps1 -TestMode -TestProfile Stale -Remediate
+.\Attestation_Review.ps1 -TestMode -TestProfile Healthy
+.\Attestation_Review.ps1 -TestMode -TestProfile Rejected -Remediate
+.\Attestation_Review.ps1 -TestMode -TestProfile MdmMissing
 ```
 
 **Parameters**
 
-| Parameter            | Type   | Default                                 | Description                                                                           |
-| -------------------- | ------ | --------------------------------------- | ------------------------------------------------------------------------------------- |
-| `-Remediate`         | Switch | Off                                     | Enables artifact cleanup. Without this, the script is read-only.                      |
-| `-RunDeviceEnroller` | Switch | Off                                     | Triggers `DeviceEnroller.exe /c /AutoEnrollMDM` after eligible remediation. Requires `-Remediate`. |
-| `-RecentHours`       | Int    | `72`                                    | How far back to query MDM and Device Registration event logs.                         |
-| `-BackupRoot`        | String | `C:\ProgramData\IntuneEnrollmentRepair` | Root path for timestamped backup directories and output reports.                      |
+| Parameter            | Type       | Default                                 | Description                                                                           |
+| -------------------- | ---------- | --------------------------------------- | ------------------------------------------------------------------------------------- |
+| `-Remediate`         | Switch     | Off                                     | Enables artifact cleanup. Without this, the script is read-only.                      |
+| `-RunDeviceEnroller` | Switch     | Off                                     | Triggers `DeviceEnroller.exe /c /AutoEnrollMDM` after eligible remediation. Requires `-Remediate`. |
+| `-TestMode`          | Switch     | Off                                     | Overrides dsregcmd values with hardcoded test data after real collection. Enables classification path testing without a real device state. |
+| `-TestProfile`       | String     | `Stale`                                 | Which classification path to simulate when `-TestMode` is active. Valid values: `Healthy`, `Stale`, `Rejected`, `MdmMissing`. |
+| `-RecentHours`       | Int        | `72`                                    | How far back to query MDM and Device Registration event logs.                         |
+| `-BackupRoot`        | String     | `C:\ProgramData\IntuneEnrollmentRepair` | Root path for timestamped backup directories and output reports.                      |
 
 ---
 
@@ -241,6 +251,24 @@ Returns an empty array if no tasks are found or if the Task Scheduler service is
 
 ---
 
+### `Remove-EnterpriseMgmtTaskFolder`
+
+Deletes the empty `\Microsoft\Windows\EnterpriseMgmt\{GUID}` scheduled task folder after tasks have been unregistered.
+
+Uses the `Schedule.Service` COM object's `DeleteFolder` method because `Unregister-ScheduledTask` only removes tasks, not the parent folder. The COM object is released in a `finally` block. Failures (folder absent, non-empty, COM access denied) are silently ignored — this is a best-effort cleanup.
+
+Must be called **after** `Unregister-ScheduledTask` for the same GUID, since `DeleteFolder` fails if child tasks still exist.
+
+---
+
+### `Normalize-GuidList`
+
+Strips braces, uppercases, deduplicates, and sorts a list of GUID strings for diagnostic comparison.
+
+Used exclusively for GUID correlation fields in the detection report (e.g., `OmadmGuidsNotInEnrollment`). Does not affect classification or remediation eligibility — report visibility only.
+
+---
+
 ### `Get-RecentMdmErrors`
 
 Queries Windows event logs for errors, warnings, and known MDM event IDs within the lookback window (`-RecentHours`, default 72h):
@@ -345,6 +373,29 @@ For `StaleEnrollmentSuspected`, the script also removes local machine certificat
 5. Confirm Intune registration, MDM value, last check-in, and compliance state after remediation.
 6. Expand only after classification accuracy is validated in your environment.
 
+
+---
+
+## TestMode
+
+The `-TestMode` switch enables classification path testing on any device by overriding dsregcmd values with hardcoded test data. Real dsregcmd output and event logs are still collected first — TestMode overlays fabricated values on top, so the script exercises the same code paths as production.
+
+**How it works:**
+
+All profiles set `AzureAdJoined=YES`, `DeviceAuthStatus=SUCCESS`, `DomainJoined=NO`, `WorkplaceJoined=NO`, and `TenantName=Gamtoso`. The `MdmUrl` and event signal overrides vary by profile:
+
+| Profile      | MdmUrl | Event Overrides | Expected Classification        |
+| ------------ | ------ | --------------- | ------------------------------- |
+| `Healthy`    | Set    | None            | `HealthyManaged`                |
+| `Stale`      | Empty  | None            | `StaleEnrollmentSuspected`      |
+| `Rejected`   | Empty  | `$has400Reject` + `$hasAadEnrollDenied` forced true | `EnrollmentRejectedByService` |
+| `MdmMissing` | Empty  | None            | `EntraJoinedButMDMMissing` (if no seed GUIDs) or `StaleEnrollmentSuspected` (if seed GUIDs present) |
+
+**Test environment setup:**
+
+The `TestCaseConfigC.ps1` script seeds registry GUIDs (e.g., `DEADBEEF-...`) for the `Stale` profile. The `ResetConfig_REGKEY.ps1` script removes those seeds between test runs. For the `MdmMissing` profile, run the reset script first so no enrollment GUIDs are present.
+
+TestMode overrides are placed after dsregcmd extraction and before classification, so the classification logic and remediation gates are exercised identically to production. The `-Remediate` switch works normally in TestMode — on a test device with seeded GUIDs, `Stale -Remediate` will actually clean the seed artifacts.
 
 ---
 

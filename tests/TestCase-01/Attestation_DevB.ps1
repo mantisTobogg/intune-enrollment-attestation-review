@@ -8,32 +8,26 @@
 # ============================================================================
 # ============================================================================
 # CLASS
-# $Remediate     : 활성화 시 정리 작업 실행 (기본값: 탐지만 수행함)
-# $RunDeviceEnroller : 활성화 시 DeviceEnroller.exe 실행 (Remediate와 별개 스위치; e.g., "-Remediate" Flag 추가필수임)
+# 스크립트 실행 모드 파라미터
+# $Remediate     : 활성화 시 정리 작업 실행 (기본값: 탐지만 수행함
+# $RunDeviceEnroller : 활성화 시 DeviceEnroller.exe 실행 (Remediate와 별개 스위치; e.g., "-Remediate" Flag 추가해야함) 
 # $RecentHours   : 이벤트 로그 조회 범위 (기본 72시간)
 # $BackupRoot    : 레지스트리 백업 저장 루트 경로
-# $TestMode      : 활성화 시 dsregcmd 값을 하드코딩하여 분류 경로 테스트 가능
-# $TestProfile   : TestMode 시 시뮬레이션 대상 분류 프로파일 (기본: Stale)
-#   - Healthy    : HealthyManaged 경로 → 정리 스킵 확인용
-#   - Stale      : StaleEnrollmentSuspected 경로 → GUID 정리 + DeviceEnroller 경로 확인용
-#   - Rejected   : EnrollmentRejectedByService 경로 → 서비스 측 거부 시 정리 차단 확인용
-#   - MdmMissing : EntraJoinedButMDMMissing 경로 → GUID 없는 미등록 단말 case 반영
 # ============================================================================
 param(
     [switch]$Remediate,
     [switch]$RunDeviceEnroller,
-    [switch]$TestMode,
-    [ValidateSet("Healthy","Stale","Rejected","MdmMissing")]
-    [string]$TestProfile = "Stale",
+    [switch]$testMode, #TestMode Switch
+    [string]$testClassification, #TestMode Classification injection
     [int]$RecentHours = 72,
     [string]$BackupRoot = "C:\ProgramData\IntuneEnrollmentRepair"
 )
 $ErrorActionPreference = "Stop"
 
-# ============================================================================
 # 관리자 context로 실행 중인지 확인
 # 함수 호출 값 = Bool (True or False)
 # False시: 아래 Test-Admin 호출 블록에서 throw
+# ============================================================================
 # In this case the script will stop executing and display the message "Run this script as Administrator."
 # ============================================================================
 function Test-Admin {
@@ -58,6 +52,14 @@ function Get-DsRegStatus {
     }
     return $result
 }
+# ============================================================================
+if ($TestMode) {
+	Write-Host "[TestMode] Dsregcmd values fabrication for -Remediate case testing purposes" -ForegroundColor Yellow
+	$azureAdJoined = "YES"
+	$mdmUrlPresent = $false #To ensure MDMURL is missing (StaleEnrollment case testing)
+	$deviceAuthStatus = $SUCCESS
+}
+
 # ============================================================================
 # GUID 키와 일치하는 하위 폴더 이름 목록 반환 + 레지스트리 경로 아래의 GUID 형식 키만 필터링
 # 반환값: GUID 문자열 배열 (없으면 빈 배열)
@@ -296,49 +298,6 @@ $tenantName       = $dsreg["TenantName"]
 # MDM URL 존재 여부 bool화
 $mdmUrlPresent = -not [string]::IsNullOrWhiteSpace($mdmUrl)
 
-# ============================================================================
-# TestMode: dsregcmd 출력값을 하드코딩 오버라이드
-# ----------------------------------------------------------------------------
-# 실제 dsregcmd / 이벤트 로그 수집을 진행 한 후, 그 위에 fabricated 값으로 덮어씀.
-# PROD 동작에 영향 없음 — -TestMode 스위치 없으면 이 블록 전체 스킵됨.
-# ============================================================================
-if ($TestMode) {
-    Write-Host "[TestMode] Profile: $TestProfile — dsregcmd/event overrides active" -ForegroundColor Yellow
-
-    # 모든 프로파일 공통: Entra Joined 디바이스 시뮬레이션
-    $azureAdJoined    = "YES"
-    $deviceAuthStatus = "SUCCESS"
-    $domainJoined     = "NO"
-    $workplaceJoined  = "NO"
-    $tenantName       = "Gamtoso"
-
-    switch ($TestProfile) {
-        "Healthy" {
-            # HealthyManaged 경로 → -Remediate 시 "Skipped: HealthyManaged" 출력 확인용
-            $mdmUrl        = "https://enrollment.manage.microsoft.com/enrollmentserver/discovery.svc"
-            $mdmUrlPresent = $true
-        }
-        "Stale" {
-            # StaleEnrollmentSuspected 경로 → GUID 정리 동작 확인용
-            # MdmUrl 없음 + enrollmentGuids 존재(DEADBEEF seed) = stale 조건 충족
-            $mdmUrl        = ""
-            $mdmUrlPresent = $false
-        }
-        "Rejected" {
-            # EnrollmentRejectedByService 경로 → 서비스 측 거부 시 정리 차단 확인용
-            # MdmUrl 없음 + 400/83 신호 강제 주입 (아래 별도 블록에서 처리)
-            $mdmUrl        = ""
-            $mdmUrlPresent = $false
-        }
-        "MdmMissing" {
-            # EntraJoinedButMDMMissing 경로 → GUID 없는 미등록 단말 시뮬레이션
-            # 이 프로파일은 DEADBEEF seed를 제거한 상태에서 실행해야 정확한 결과
-            $mdmUrl        = ""
-            $mdmUrlPresent = $false
-        }
-    }
-}
-
 $enterpriseTaskCount = @($tasks).Count
 $recentErrorCount    = @($events).Count
 
@@ -372,17 +331,6 @@ $has400Reject = @(
 $hasAadEnrollDenied = @(
     $events | Where-Object { $_.Id -eq 83 -and $_.Message -match "Access is denied|AADEnrollAsync" }
 ).Count -gt 0
-
-# ============================================================================
-# TestMode (Rejected 전용): 서비스 측 거부 신호 fabrication
-# ----------------------------------------------------------------------------
-# $has400Reject / $hasAadEnrollDenied 는 실제 이벤트 로그에서 반영 한 후 fabrication 진행
-# Rejected 외 프로파일에서는 실제 이벤트 로그 값이 그대로 유지됨
-# ============================================================================
-if ($TestMode -and $TestProfile -eq "Rejected") {
-    $has400Reject       = $true
-    $hasAadEnrollDenied = $true
-}
 
 # ============================================================================
 # 디바이스 분류 로직

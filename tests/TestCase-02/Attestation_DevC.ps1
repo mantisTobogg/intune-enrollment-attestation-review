@@ -9,7 +9,7 @@
 # ============================================================================
 # CLASS
 # $Remediate     : 활성화 시 정리 작업 실행 (기본값: 탐지만 수행함)
-# $RunDeviceEnroller : 활성화 시 DeviceEnroller.exe 실행 (Remediate와 별개 스위치; e.g., "-Remediate" Flag 추가필수임)
+# $RunDeviceEnroller : 활성화 시 DeviceEnroller.exe 실행 (Remediate와 별개 스위치; e.g., "-Remediate" Flag 추가필수임) 
 # $RecentHours   : 이벤트 로그 조회 범위 (기본 72시간)
 # $BackupRoot    : 레지스트리 백업 저장 루트 경로
 # $TestMode      : 활성화 시 dsregcmd 값을 하드코딩하여 분류 경로 테스트 가능
@@ -43,8 +43,8 @@ function Test-Admin {
 }
 # ============================================================================
 # dsregcmd IO 및 정규식 key:val 분류
-# dsregcmd /status 출력을 줄 단위로 읽어 "Key : Value" 형식을 ordered hashtable로 변환
-# 반환값: $dsreg["AzureAdJoined"], $dsreg["MdmUrl"] 등으로 접근 가능
+# dsregcmd /status 출력을 줄 단위로 읽어 "Key : Value" 형식을 ordered hashtable conversion 진행
+# parsable via: $dsreg["AzureAdJoined"], $dsreg["MdmUrl"] 
 # ============================================================================
 function Get-DsRegStatus {
     $raw = & dsregcmd /status 2>$null
@@ -59,8 +59,8 @@ function Get-DsRegStatus {
     return $result
 }
 # ============================================================================
-# GUID 키와 일치하는 하위 폴더 이름 목록 반환 + 레지스트리 경로 아래의 GUID 형식 키만 필터링
-# 반환값: GUID 문자열 배열 (없으면 빈 배열)
+# GUID 키와 일치하는 하위 폴더 이름 목록 출력 + 레지스트리 경로 아래의 GUID 형식을 받도록 정규식 check
+# 출력값: GUID 문자열 배열 (없으면 empty)
 # ============================================================================
 function Get-GuidSubKeys {
     param([string]$Path)
@@ -72,11 +72,11 @@ function Get-GuidSubKeys {
         Select-Object -ExpandProperty PSChildName
 }
 # ============================================================================
-# GUID 문자열 비교용 정규화
+# GUID 문자열 비교용 정규식 
 # ----------------------------------------------------------------------------
 # Registry provider / task path / export source에 따라 GUID casing 또는 brace
 # 포함 여부가 달라질 수 있으므로, 진단용 비교 전에 같은 형태로 정규화한다.
-# 이 함수는 classification/remediation 판단에는 사용하지 않고 report visibility 용도.
+# 이 함수는 classification/remediation 판단에는 사용하지 않고 report visibility purpose
 # ============================================================================
 function Normalize-GuidList {
     param([string[]]$Guids)
@@ -92,7 +92,7 @@ function Normalize-GuidList {
 # EnterpriseMgmt 스케줄된 작업 목록 조회
 # ============================================================================
 # FIX 5: -TaskPath 파라미터는 와일드카드를 지원하지 않으므로 Where-Object 필터로 대체
-# 작업이 없거나 오류 시 빈 배열 반환
+# 작업이 없거나 오류 시 빈 배열 출력 
 # ============================================================================
 function Get-EnterpriseMgmtTasks {
     try {
@@ -109,7 +109,7 @@ function Get-EnterpriseMgmtTasks {
 # ----------------------------------------------------------------------------
 # Unregister-ScheduledTask는 작업(task)만 제거하고 빈 폴더
 # \Microsoft\Windows\EnterpriseMgmt\{GUID} 는 남길 수 있음.
-# schedule.service COM 객체의 DeleteFolder로 폴더 자체를 제거진행 
+# schedule.service COM 객체의 DeleteFolder로 폴더 자체를 제거 
 # GUID별로 호출하며, 폴더가 없거나 비어있지 않으면 조용히 스킵.
 # ============================================================================
 function Remove-EnterpriseMgmtTaskFolder {
@@ -137,7 +137,7 @@ function Remove-EnterpriseMgmtTaskFolder {
 # 대상 로그: DeviceManagement-Enterprise-Diagnostics-Provider/Admin, User Device Registration/Admin
 # ============================================================================
 # Level -le 3 = Warning/Error/Critical, 특정 이벤트 ID 포함
-# 반환값: 이벤트 객체 배열
+# 출력값: 이벤트 객체 배열
 # NEW: Event 83(AADEnrollAsync 실패) 및 90/91(Discovery) 포함 — 아래 분류 로직에서 사용
 function Get-RecentMdmErrors {
     param([int]$Hours)
@@ -189,7 +189,7 @@ function Remove-RegSubKey {
     }
 }
 
-# Test-Admin 실패 시 즉시 종료
+# Test-Admin 실패 시  종료
 if (-not (Test-Admin)) {
     throw "Run this script as Administrator."
 }
@@ -214,9 +214,9 @@ $omadmPath  = "HKLM:\SOFTWARE\Microsoft\Provisioning\OMADM\Accounts"
 # ============================================================================
 # GUID-scoped 정리 대상 
 # ----------------------------------------------------------------------------
-# 기존 스크립트는 Enrollments / Enrollments\Status / OMADM\Accounts 3곳만 정리했다.
+# 기존 스크립트는 Enrollments / Enrollments\Status / OMADM\Accounts 3곳만 정리.
 # 부분 정리로 인해 OMADM\Sessions, OMADM\Logger 등 연관 상태가 잔존하면
-# 다음 등록 흐름이 비일관 상태를 다시 참조할 수 있다 (실제 케이스에서 관측됨).
+# 이후 등록 과정 중 이슈 발생 할 수 있으니 정리 진행 필요.
 #
 # 주의: 아래 경로는 모두 "부모 경로"이며, 실제 삭제는 GUID 하위 키에 한해서만 수행.
 # PolicyManager\Providers, EnterpriseResourceManager\Tracked 는 GUID 하위 키 구조이므로
@@ -228,25 +228,25 @@ $policyProvPath    = "HKLM:\SOFTWARE\Microsoft\PolicyManager\Providers"
 $trackedPath       = "HKLM:\SOFTWARE\Microsoft\EnterpriseResourceManager\Tracked"
 
 # 각 경로의 GUID 목록, 스케줄 작업, 이벤트 로그 수집
-$enrollmentGuids = @(Get-GuidSubKeys $enrollPath)
-$statusGuids     = @(Get-GuidSubKeys $statusPath)
-$omadmGuids      = @(Get-GuidSubKeys $omadmPath)
+$enrollmentGuids   = @(Get-GuidSubKeys $enrollPath)
+$statusGuids       = @(Get-GuidSubKeys $statusPath)
+$omadmGuids        = @(Get-GuidSubKeys $omadmPath)
 $omadmSessionGuids = @(Get-GuidSubKeys $omadmSessionsPath)
 $omadmLoggerGuids  = @(Get-GuidSubKeys $omadmLoggerPath)
 $policyProvGuids   = @(Get-GuidSubKeys $policyProvPath)
 $trackedGuids      = @(Get-GuidSubKeys $trackedPath)
-$tasks           = @(Get-EnterpriseMgmtTasks)
-$events          = @(Get-RecentMdmErrors -Hours $RecentHours)
+$tasks             = @(Get-EnterpriseMgmtTasks)
+$events            = @(Get-RecentMdmErrors -Hours $RecentHours)
 
 # ============================================================================
 # GUID correlation diagnostics
 # ----------------------------------------------------------------------------
-# 아래 값들은 report 해석을 돕기 위한 evidence field 이며,
-# stale/active 여부를 단정하거나 remediation eligibility를 바꾸지 않는다.
+# 출력되는 리포트 구성 요소. 
+# stale/active 여부를 단정하거나 remediation eligibility에 영향 없음.
 # ============================================================================
-$normalizedEnrollmentGuids  = Normalize-GuidList $enrollmentGuids
-$normalizedStatusGuids      = Normalize-GuidList $statusGuids
-$normalizedOmadmGuids       = Normalize-GuidList $omadmGuids
+$normalizedEnrollmentGuids   = Normalize-GuidList $enrollmentGuids
+$normalizedStatusGuids       = Normalize-GuidList $statusGuids
+$normalizedOmadmGuids        = Normalize-GuidList $omadmGuids
 $normalizedOmadmSessionGuids = Normalize-GuidList $omadmSessionGuids
 $normalizedOmadmLoggerGuids  = Normalize-GuidList $omadmLoggerGuids
 $normalizedPolicyProvGuids   = Normalize-GuidList $policyProvGuids
@@ -289,7 +289,7 @@ $azureAdJoined    = $dsreg["AzureAdJoined"]
 $workplaceJoined  = $dsreg["WorkplaceJoined"]
 $deviceAuthStatus = $dsreg["DeviceAuthStatus"]
 $mdmUrl           = $dsreg["MdmUrl"]
-# FIX 6: 리포트 누락 필드 추가 — 스펙에 명시된 DomainJoined, TenantName 포함
+# FIX 6: Output 누락 필드 추가 — 스펙에 명시된 DomainJoined, TenantName 포함
 $domainJoined     = $dsreg["DomainJoined"]
 $tenantName       = $dsreg["TenantName"]
 
@@ -299,8 +299,8 @@ $mdmUrlPresent = -not [string]::IsNullOrWhiteSpace($mdmUrl)
 # ============================================================================
 # TestMode: dsregcmd 출력값을 하드코딩 오버라이드
 # ----------------------------------------------------------------------------
-# 실제 dsregcmd / 이벤트 로그 수집을 진행 한 후, 그 위에 fabricated 값으로 덮어씀.
-# PROD 동작에 영향 없음 — -TestMode 스위치 없으면 이 블록 전체 스킵됨.
+# 실제 dsregcmd / 이벤트 로그 수집을 진행 한 후, 그 위에 fabricated 값으로 덮어씀. 
+# PROD 동작에 영향 없음 — -TestMode 스위치 없으면 이 블록 전체 스킵됨. 
 # ============================================================================
 if ($TestMode) {
     Write-Host "[TestMode] Profile: $TestProfile — dsregcmd/event overrides active" -ForegroundColor Yellow
@@ -358,12 +358,12 @@ $blockingErrorCount = @(
 # - Event 76 "Auto MDM Enroll: ... Failed (Bad request (400))" = 0x80190190
 # - Event 83 "AADEnrollAsync Failure (Access is denied.)"
 # 이 두 신호가 함께 나타나면, Discovery는 성공하나 등록 요청을 서비스가 거부하는 상태로
-# 로컬 아티팩트 정리(StaleEnrollment 경로)로는 해결이 안된다는 점을 고려하여 별도의 Tenant 설정 이슈 일 가능성이 큼
+# 로컬 아티팩트 정리(StaleEnrollment 경로)로는 해결이 안된다는 점을 고려하여 별도의 Tenant 설정 이슈로 보임. 
 # 원인은 디바이스 객체 상태 / 등록 제한 / 사용자당 디바이스 한도 / 라이선스 등 서비스 측
 # ============================================================================
 # 주의: 위 $blockingErrorCount(0x801800xx 계열)와 별개 신호다.
 # 관측된 거부는 0x801800xx가 아니라 0x80190190(HTTP 400)으로 표면화되었으므로,
-# 기존 GateKepping 방법으로 해당 상태파악이 힘듬. 
+# 기존 GateKepping 방법으로 해당 상태 파악 안됨. 
 # ============================================================================
 $has400Reject = @(
     $events | Where-Object { $_.Id -eq 76 -and $_.Message -match "0x80190190|Bad request \(400\)" }
@@ -386,7 +386,7 @@ if ($TestMode -and $TestProfile -eq "Rejected") {
 
 # ============================================================================
 # 디바이스 분류 로직
-# dsregcmd 출력값 + 레지스트리 GUID 수 + 스케줄 작업 수 + 이벤트 오류 기반 판단
+# dsregcmd 출력값 + 레지스트리 GUID 수 + 스케줄 작업 수 + evtx error 바탕으로 confidence-level 정의
 # ----------------------------------------------------------------------------
 # 우선순위:
 #   EnrollmentBlocked > EnrollmentRejectedByService > HealthyManaged >
@@ -402,38 +402,37 @@ if ($blockingErrorCount -gt 0) {
 }
 # ============================================================================
 # 서비스 측 거부 (HTTP 400 + AADEnrollAsync Access denied)
-# blockingError 다음, HealthyManaged 보다 먼저 평가하여
-# "Entra 가입됨 + 등록 GUID 잔존" 상태가 Stale로 오분류되어 정리되는 것을 방지.
-# 로컬 정리를 절대 수행하지 않고, 서비스 측 확인 항목을 권장한다.
+# blockingError 다음, HealthyManaged 보다 먼저 평가
+# "Entra 가입됨 + 등록 GUID 잔존" 상태가 Stale로 오분류되어 정리 리스크 방지
 # ----------------------------------------------------------------------------
 elseif ($has400Reject -and $hasAadEnrollDenied) {
     $classification    = "EnrollmentRejectedByService"
     $recommendedAction = "Do NOT clean local artifacts. Discovery succeeds but the service rejects the enrollment request (HTTP 400 + AADEnrollAsync access denied). Verify the Entra device object (existence / stale duplicates), Intune enrollment restrictions, per-user device cap, and the user's Intune license/MDM scope before any further action."
 }
 elseif ($azureAdJoined -eq "YES" -and $mdmUrlPresent -and $omadmGuids.Count -gt 0 -and $enterpriseTaskCount -gt 0) {
-    # Entra 가입 + MDM URL + OMADM GUID + 스케줄 작업 모두 존재 = 정상 관리 상태
+    # Entra 가입 + MDM URL + OMADM GUID + 스케줄 작업 모두 존재 = 정상 관리 단말
     $classification    = "HealthyManaged"
     $recommendedAction = "No remediation."
 }
 elseif ($azureAdJoined -eq "YES" -and -not $mdmUrlPresent -and $enrollmentGuids.Count -gt 0) {
-    # Entra 가입 + MDM URL 없음 + 등록 GUID 잔존 = 오래된 등록 아티팩트 의심
+    # Entra 가입 + MDM URL 없음 + 등록 GUID 잔존 = 오래된 등록 아티팩트 가능성 있음
     $classification    = "StaleEnrollmentSuspected"
     $recommendedAction = "Backup stale enrollment state, remove stale GUID artifacts, then run DeviceEnroller."
 }
 elseif ($azureAdJoined -eq "YES" -and -not $mdmUrlPresent) {
-    # Entra 가입 + MDM URL 없음 + 등록 GUID 없음 = MDM 등록 자체가 미완료
+    # Entra 가입 + MDM URL 없음 + 등록 GUID 없음 = MDM 등록 미완
     $classification    = "EntraJoinedButMDMMissing"
     $recommendedAction = "Run DeviceEnroller and verify MDM enrollment."
 }
 elseif ($azureAdJoined -eq "YES" -and $mdmUrlPresent -and $recentErrorCount -gt 0) {
-    # Entra 가입 + MDM URL 존재 + 최근 오류 = 등록은 있으나 체크인/동기화 실패 중
+    # Entra 가입 + MDM URL 존재 + 최근 오류 = 등록은 있으나 체크인/동기화 실패
     $classification    = "EnrollmentBroken"
     $recommendedAction = "Try sync first. If unresolved, collect diagnostics and review cleanup eligibility."
 }
 # ============================================================================
-# 최종 리포트 객체 구성
+# 최종 Output 객체 구성
 # FIX 6: DomainJoined, TenantName, MdmUrl (실제 값) 추가
-# NEW: Has400Reject / HasAadEnrollDenied 신호 노출 (분류 근거 추적용)
+# NEW: Has400Reject / HasAadEnrollDenied 신호 노출 (분류 근거 리뷰용)
 # ----------------------------------------------------------------------------
 $result = [ordered]@{
     ComputerName             = $env:COMPUTERNAME
@@ -501,7 +500,7 @@ $result.GetEnumerator() | ForEach-Object {
 # ----------------------------------------------------------------------------
 if ($Remediate) {
 
-    # FIX 3 / FIX 7: HealthyManaged 및 EnrollmentBlocked는 정리 불필요 — 즉시 스킵
+    # FIX 3 / FIX 7: HealthyManaged 및 EnrollmentBlocked는 정리 불필요 — 스킵
     if ($classification -in @("HealthyManaged", "EnrollmentBlocked")) {
         $result.RemediationResult = "Skipped: $classification."
     }
@@ -553,7 +552,7 @@ if ($Remediate) {
                 $statusKey = Join-Path $statusPath $guid
 
                 # ----------------------------------------------------------------------------
-                # FIX 1: GUID별 스테일 여부 개별 검증 (이전: 모든 GUID 무조건 삭제)
+                # FIX 1: GUID별 스테일 여부 개별 검증 (이전: 모든 GUID 삭제)
                 # EnrollmentType = 6 : MDM 등록 타입 (Intune 현대 등록)
                 # DiscoveryServiceFullURL이 manage.microsoft.com 포함 = Intune 엔드포인트
                 # 두 조건 중 하나라도 해당하면 Intune MDM 아티팩트로 판단하여 삭제 대상
@@ -562,7 +561,7 @@ if ($Remediate) {
                 $enrollmentType = (Get-ItemProperty -Path $guidKey -Name "EnrollmentType" -ErrorAction SilentlyContinue).EnrollmentType
                 $discoveryUrl   = (Get-ItemProperty -Path $guidKey -Name "DiscoveryServiceFullURL" -ErrorAction SilentlyContinue).DiscoveryServiceFullURL
 
-                # FIX 1b: [int] 캐스팅으로 레지스트리 DWORD vs 문자열 타입 불일치 방지
+                # FIX 1b: [int] 캐스팅으로 레지스트리 DWORD vs regex 이슈 방지
                 if ([int]$enrollmentType -eq 6 -or $discoveryUrl -match "manage\.microsoft\.com") {
                     Remove-RegSubKey -Path $guidKey
                     Remove-RegSubKey -Path $statusKey
@@ -619,14 +618,14 @@ if ($Remediate) {
         # FIX 4: DeviceEnroller 실행은 -RunDeviceEnroller 스위치 명시 시에만 실행
         # 이전 버전: ($RunDeviceEnroller -or $classification -in @(...)) 로직으로
         # -RunDeviceEnroller 없이도 특정 분류에서 자동 실행됨 (의도치 않은 동작)
-        # 수정: -RunDeviceEnroller 스위치가 있어야만 실행 (명시적 opt-in)
+        # 수정: -RunDeviceEnroller 스위치가 있어야만 실행되도록 기본값 (명시적 opt-in)
         # ============================================================================
         if ($RunDeviceEnroller) {
             # ----------------------------------------------------------------------------
             # FIX 3 (DeviceEnroller): -Wait 제거
-            # DeviceEnroller.exe /c /AutoEnrollMDM은 30~90초 이상 소요될 수 있음
+            # DeviceEnroller.exe /c /AutoEnrollMDM 얌전히 완료 대기 할 것 (30~90초) 
             # Intune Remediations 스크립트 타임아웃(기본 60초)에 걸릴 위험
-            # 프로세스 시작만 트리거하고 스크립트는 즉시 진행
+            # 프로세스 시작만 트리거하고 스크립트 수행 
             # ----------------------------------------------------------------------------
             $deviceEnroller = Join-Path $env:SystemRoot "System32\DeviceEnroller.exe"
             Start-Process -FilePath $deviceEnroller -ArgumentList "/c /AutoEnrollMDM" -WindowStyle Hidden
@@ -648,7 +647,7 @@ if ($Remediate) {
         $result.RemediationResult = "Skipped: classification not eligible for automatic remediation."
     }
     # ============================================================================
-    # 정리 실행 후 최종 결과를 별도 JSON으로 저장
+    # 정리 실행 후 최종 결과를 별도 JSON으로 저장됨. (detection-result.json은 정리 전 상태 스냅샷 참고)
     # FIX 4 (오류 처리): try/catch로 감싸 정리 도중 실패해도 결과 JSON은 기록 하도록 구성 
     # ============================================================================
     try {
